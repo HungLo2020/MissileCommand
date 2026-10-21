@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import select
+import shutil
 import subprocess
 import tempfile
 import time
@@ -20,7 +21,15 @@ def exercise(args, environment, root):
     def xdo(*arguments, check=True):
         return subprocess.run([args.xdotool, *map(str, arguments)], env=environment,
                               check=check, capture_output=True, text=True, timeout=5)
-    process = subprocess.Popen([str(args.binary.resolve()), "--no-audio"], env=environment,
+    installed = root / "app/bin/missile-command"
+    installed.parent.mkdir(parents=True)
+    shutil.copy2(args.binary.resolve(), installed)
+    installed.chmod(0o555)
+    installed.parent.chmod(0o555)
+    installed.parent.parent.chmod(0o555)
+    environment = dict(environment)
+    environment.pop("BASALT_GAME_DIR", None)
+    process = subprocess.Popen([str(installed), "--no-audio"], env=environment, cwd="/",
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:
         window = None
@@ -51,7 +60,7 @@ def exercise(args, environment, root):
             xdo("keydown", "--window", window, name)
             time.sleep(0.08)
             # Q closes the owned window on key-down; key-up then has no target.
-            xdo("keyup", "--window", window, name, check=process.poll() is None)
+            xdo("keyup", "--window", window, name, check=name != "q" and process.poll() is None)
             time.sleep(0.08)
         key("Return")
         for width, height in [(800, 600), (1100, 650), (440, 700)]:
@@ -75,9 +84,11 @@ def exercise(args, environment, root):
             raise RuntimeError("normal quit did not save inside the install root")
         return {"display": "owned private Xvfb", "window_class": "missile-command/MissileCommand",
                 "opacity": 4294967295, "resize": [[800, 600], [1100, 650], [440, 700]],
-                "keyboard_quit_exit": 0, "save": "data/save/records.json",
+                "keyboard_quit_exit": 0, "read_only_app": True, "install_relative_fallback": True, "save": "data/save/records.json",
                 "stdout": stdout.strip(), "stderr": stderr.strip()}
     finally:
+        installed.parent.chmod(0o755)
+        installed.parent.parent.chmod(0o755)
         if process.poll() is None:
             process.terminate()
             try:

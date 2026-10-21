@@ -39,8 +39,9 @@ basalt install MissileCommand --library default
 basalt actions MissileCommand
 ```
 
-Installation needs a published matching GitHub Release. The catalog entry has not been verified
-with a live Basalt install until that release exists. Basalt launches `app/bin/missile-command`
+The installed Basalt CLI successfully loaded this entry from an isolated temporary XDG config
+and exposed all seven standard maintenance actions. Full download/install validation follows a
+published matching GitHub Release. Basalt launches `app/bin/missile-command`
 from the install root without arguments. The runtime honors `BASALT_GAME_DIR`, `BASALT_SAVE_DIR`,
 `BASALT_CONFIG_DIR`, `BASALT_SHARED_CONFIG_DIR`, and `BASALT_CACHE_DIR`. Without those variables it
 derives the install root from the executable's `app/bin` location, independently of the working
