@@ -1,0 +1,13 @@
+{
+  "release": "v0.1.0",
+  "basalt_catalog": "schema2/standard1",
+  "github_asset_install": "passed",
+  "path_with_spaces": "passed",
+  "execute_permission": "passed",
+  "cover_matches": "passed",
+  "backup": "passed",
+  "reinstall_preserves_save": "passed",
+  "installed_headless_run": "ticks=11999 wave=3 score=1985 cities=0 phase=GameOver { ticks: 7635 }",
+  "binary_sha256": "0dbf0f8e27778b2b1c727dbcaf91e78ee114b10359a08c5b14e1e0ffd932e345",
+  "desktop_interaction": "none"
+}

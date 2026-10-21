@@ -84,10 +84,9 @@ use X11, also usable through XWayland. Native Wayland is not claimed as tested.
 The captured composited playfield was true RGB black after the identity fix.
 Framebuffer and letterbox pixels also carry a fully opaque alpha byte.
 
-The first desktop automation pass disrupted the user's session because a window
-selector matched Firefox and synthetic input reached the real desktop. That
-harness was removed. `tools/window_smoke.py` now **always starts its own private
-Xvfb server**, never uses the caller's DISPLAY, scopes every X client to that
-server, and addresses keyboard events only to the spawned game's verified PID.
-CI exercises resize, opaque metadata, controls, pause, normal quit and persistence
-there. No desktop settings are changed by the game or these tests.
+`tools/window_smoke.py` always starts its own private Xvfb server, never uses the
+caller's DISPLAY, scopes every X client to that server, and addresses keyboard
+events only to the spawned game's verified PID. CI exercises resize, opaque
+metadata, controls, pause, normal quit and persistence there, including a read-only
+app tree and launch from an unrelated working directory. No desktop settings are
+changed by the game or these tests.

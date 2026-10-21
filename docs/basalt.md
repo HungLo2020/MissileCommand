@@ -40,8 +40,10 @@ basalt actions MissileCommand
 ```
 
 The installed Basalt CLI successfully loaded this entry from an isolated temporary XDG config
-and exposed all seven standard maintenance actions. Full download/install validation follows a
-published matching GitHub Release. Basalt launches `app/bin/missile-command`
+and exposed all seven standard maintenance actions. The v0.1.0 GitHub asset was then installed through Basalt into a temporary library
+with spaces in its path. Backup succeeded, reinstall preserved an existing save byte-for-byte,
+and the installed executable passed its headless playthrough. See
+[the integration result](evidence/basalt-install.json). Basalt launches `app/bin/missile-command`
 from the install root without arguments. The runtime honors `BASALT_GAME_DIR`, `BASALT_SAVE_DIR`,
 `BASALT_CONFIG_DIR`, `BASALT_SHARED_CONFIG_DIR`, and `BASALT_CACHE_DIR`. Without those variables it
 derives the install root from the executable's `app/bin` location, independently of the working
