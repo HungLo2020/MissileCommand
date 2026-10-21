@@ -1,0 +1,134 @@
+{
+  "reference": "missile1 revision 1 under MAME 0.285",
+  "rom_sha256": "4cfa3b0ea969bc721788a0e00f5c22466cfa02458de26599303de06100e4602c",
+  "probe": "tools/mame_probe.lua",
+  "instrumentation": "Coin and start input; cursor RAM set to (20,130) for side shot then (123,130) for center shot; no missile position/speed writes. Coordinates native bottom-up.",
+  "side": [
+    {
+      "frame": 1002,
+      "native_x": 20,
+      "native_y": 27,
+      "ammo": [
+        9,
+        10,
+        10
+      ]
+    },
+    {
+      "frame": 1003,
+      "native_x": 20,
+      "native_y": 30,
+      "ammo": [
+        9,
+        10,
+        10
+      ]
+    },
+    {
+      "frame": 1004,
+      "native_x": 20,
+      "native_y": 33,
+      "ammo": [
+        9,
+        10,
+        10
+      ]
+    },
+    {
+      "frame": 1005,
+      "native_x": 20,
+      "native_y": 36,
+      "ammo": [
+        9,
+        10,
+        10
+      ]
+    },
+    {
+      "frame": 1006,
+      "native_x": 20,
+      "native_y": 39,
+      "ammo": [
+        9,
+        10,
+        10
+      ]
+    },
+    {
+      "frame": 1007,
+      "native_x": 20,
+      "native_y": 42,
+      "ammo": [
+        9,
+        10,
+        10
+      ]
+    }
+  ],
+  "center": [
+    {
+      "frame": 1022,
+      "native_x": 123,
+      "native_y": 31,
+      "ammo": [
+        9,
+        9,
+        10
+      ]
+    },
+    {
+      "frame": 1023,
+      "native_x": 123,
+      "native_y": 38,
+      "ammo": [
+        9,
+        9,
+        10
+      ]
+    },
+    {
+      "frame": 1024,
+      "native_x": 123,
+      "native_y": 45,
+      "ammo": [
+        9,
+        9,
+        10
+      ]
+    },
+    {
+      "frame": 1025,
+      "native_x": 123,
+      "native_y": 52,
+      "ammo": [
+        9,
+        9,
+        10
+      ]
+    },
+    {
+      "frame": 1026,
+      "native_x": 123,
+      "native_y": 59,
+      "ammo": [
+        9,
+        9,
+        10
+      ]
+    },
+    {
+      "frame": 1027,
+      "native_x": 123,
+      "native_y": 66,
+      "ammo": [
+        9,
+        9,
+        10
+      ]
+    }
+  ],
+  "limitations": [
+    "This bounded probe verifies vertical interceptor steps and ammunition use, not entire game equivalence.",
+    "MAME inputs are sampled after a bounded delay; sample ages are aligned to the first active missile position."
+  ]
+}
