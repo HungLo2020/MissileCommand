@@ -469,6 +469,6 @@ mod tests {
         renderer.write_rgba(&mut rgba);
         assert_eq!(rgba.len(), WIDTH * HEIGHT * 4);
         assert_eq!(&rgba[..4], &[0x12, 0x34, 0x56, 0xff]);
-        assert!(rgba.chunks_exact(4).all(|pixel| pixel[3] == 0xff));
+        assert!(rgba.iter().skip(3).step_by(4).all(|alpha| *alpha == 0xff));
     }
 }

@@ -4,7 +4,7 @@
 # With no commit, watches HEAD. With no workflow, watches every run for the commit.
 set -euo pipefail
 
-commit=${1:-$(git rev-parse HEAD)}
+commit=$(git rev-parse "${1:-HEAD}")
 workflow=${2:-}
 runs=""
 
