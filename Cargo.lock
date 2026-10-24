@@ -854,11 +854,9 @@ dependencies = [
  "quasar-render-2d",
  "quasar-storage",
  "quasar-window",
- "raw-window-handle",
  "serde",
  "serde_json",
  "tempfile",
- "x11rb",
 ]
 
 [[package]]
@@ -1313,8 +1311,8 @@ dependencies = [
 
 [[package]]
 name = "quasar-audio"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 dependencies = [
  "cpal",
  "crossbeam-channel",
@@ -1324,29 +1322,29 @@ dependencies = [
 
 [[package]]
 name = "quasar-core"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 
 [[package]]
 name = "quasar-frame"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 dependencies = [
  "vulkanic-gal",
 ]
 
 [[package]]
 name = "quasar-input"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "quasar-render-2d"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 dependencies = [
  "quasar-core",
  "quasar-frame",
@@ -1356,8 +1354,8 @@ dependencies = [
 
 [[package]]
 name = "quasar-storage"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 dependencies = [
  "serde",
  "serde_json",
@@ -1366,11 +1364,13 @@ dependencies = [
 
 [[package]]
 name = "quasar-window"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 dependencies = [
  "quasar-input",
+ "raw-window-handle",
  "winit",
+ "x11rb",
 ]
 
 [[package]]
@@ -1888,8 +1888,8 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vulkanic-gal"
-version = "0.2.4"
-source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.4#e3919ea42e0150dc7e909f517d360545e834b778"
+version = "0.2.5"
+source = "git+https://github.com/HungLo2020/Quasar?tag=v0.2.5#5ff99d8037417da8c7c00a616cc8086f721820ef"
 dependencies = [
  "ash",
  "ash-window",

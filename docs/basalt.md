@@ -4,7 +4,7 @@ The packaging target is [Basalt Game Standard version 1](https://github.com/Hung
 with catalog schema version 2, reviewed at Basalt revision
 `516209fc8489779cb322cc9b641a1487beff4ec3`. No changes to the Basalt repository are required or made here.
 
-Build and package on Linux x64 using Rust 1.94 or newer (the Quasar `v0.2.4` MSRV) and Python 3.11 or newer. The Quasar crates are Git-tag dependencies, so the first build needs access to GitHub and a C++ compiler with CMake and Ninja/Make for `shaderc`:
+Build and package on Linux x64 using Rust 1.94 or newer (the Quasar `v0.2.5` MSRV) and Python 3.11 or newer. The Quasar crates are Git-tag dependencies, so the first build needs access to GitHub and a C++ compiler with CMake and Ninja/Make for `shaderc`:
 
 ```sh
 cargo build --locked --release

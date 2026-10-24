@@ -10,7 +10,7 @@ use quasar_input::{InputState, Key, MouseButton};
 use quasar_render_2d::{FramebufferPresenter, PresentOutcome};
 use quasar_storage::GamePaths;
 use quasar_window::{
-    GameWindow, WindowConfig,
+    DesktopConfig, GameWindow, WindowConfig, X11Identity,
     winit::{
         application::ApplicationHandler,
         event::{DeviceEvent, DeviceId, WindowEvent},
@@ -22,15 +22,6 @@ use std::{
     error::Error,
     path::{Path, PathBuf},
     time::{Duration, Instant},
-};
-
-#[cfg(target_os = "linux")]
-use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-#[cfg(target_os = "linux")]
-use x11rb::{
-    connection::Connection,
-    protocol::xproto::{AtomEnum, ConnectionExt, PropMode},
-    wrapper::ConnectionExt as _,
 };
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
@@ -94,7 +85,6 @@ pub fn run(options: Options, session: Session) -> Result {
         session,
         window: None,
         presenter: None,
-        desktop: None,
         renderer: Renderer::new(),
         rgba: Vec::new(),
         audio,
@@ -137,7 +127,6 @@ struct App {
     preferences_writable: bool,
     // Quasar graphics must be dropped before the window on suspension/exit.
     presenter: Option<FramebufferPresenter>,
-    desktop: Option<Desktop>,
     window: Option<GameWindow>,
     renderer: Renderer,
     rgba: Vec<u8>,
@@ -167,22 +156,20 @@ impl App {
         event_loop.exit();
     }
 
-    fn apply_size(&mut self, width: u32, height: u32) -> Result {
+    fn apply_size(&mut self, width: u32, height: u32) {
         if width == 0 || height == 0 || (width, height) == self.window_size {
-            return Ok(());
+            return;
         }
         self.window_size = (width, height);
         if let Some(presenter) = &mut self.presenter {
             presenter.resize(width, height);
         }
-        if let Some(desktop) = &self.desktop {
-            desktop.resize(width, height)?;
-        }
-        Ok(())
     }
 
     fn initialize(&mut self, event_loop: &ActiveEventLoop) -> Result {
-        let window = GameWindow::create(
+        // Quasar applies the X11 identity and opacity policy before returning, so
+        // Vulkan presenter setup cannot delay compositor metadata.
+        let mut window = GameWindow::create_with_desktop(
             event_loop,
             &WindowConfig {
                 title: "Missile Command — Enter to start · F1 help".into(),
@@ -192,13 +179,12 @@ impl App {
                 fullscreen: false,
                 resizable: true,
             },
+            &DesktopConfig {
+                x11: Some(X11Identity::with_names("missile-command", "MissileCommand")),
+                ..DesktopConfig::for_application("missile-command")
+            },
         )?;
-        // Set compositor-visible identity before Vulkan initialization delays the first frame.
-        let desktop = Desktop::attach(window.native())?;
         let size = window.native().inner_size();
-        if size.width > 0 && size.height > 0 {
-            desktop.resize(size.width, size.height)?;
-        }
         self.window_size = (size.width, size.height);
         let presenter = FramebufferPresenter::new(
             window.shared_native(),
@@ -210,12 +196,13 @@ impl App {
                 scaling: Scaling::Fit,
             },
         )?;
+        // Reconcile a resize that landed while the presenter initialized.
+        window.sync_desktop();
         window
             .native()
             .set_title("Missile Command — Enter to start · F1 help");
         self.window = Some(window);
         self.presenter = Some(presenter);
-        self.desktop = Some(desktop);
         self.previous = Instant::now();
         self.started = Instant::now();
         self.clock.reset();
@@ -380,7 +367,6 @@ impl ApplicationHandler for App {
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
         self.presenter.take();
-        self.desktop.take();
         self.window.take();
         self.pending_fire = [false; 3];
         self.pending_start = false;
@@ -402,11 +388,8 @@ impl ApplicationHandler for App {
             event_loop.exit();
             return;
         }
-        if let Some(size) = update.resized
-            && let Err(error) = self.apply_size(size.width, size.height)
-        {
-            self.fail(event_loop, error);
-            return;
+        if let Some(size) = update.resized {
+            self.apply_size(size.width, size.height);
         }
         if let Some(focused) = update.focus_changed {
             self.clock.reset();
@@ -441,15 +424,15 @@ impl ApplicationHandler for App {
             return;
         }
         let automated = self.automated();
+        if let Some(window) = &mut self.window {
+            window.sync_desktop();
+        }
         let current_size = self.window.as_ref().map(|window| {
             let size = window.native().inner_size();
             (size.width, size.height)
         });
-        if let Some((width, height)) = current_size
-            && let Err(error) = self.apply_size(width, height)
-        {
-            self.fail(event_loop, error);
-            return;
+        if let Some((width, height)) = current_size {
+            self.apply_size(width, height);
         }
         let now = Instant::now();
         self.process_input(event_loop, now);
@@ -519,104 +502,7 @@ impl ApplicationHandler for App {
 
     fn exiting(&mut self, _: &ActiveEventLoop) {
         self.presenter.take();
-        self.desktop.take();
         self.window.take();
-    }
-}
-
-struct Desktop {
-    #[cfg(target_os = "linux")]
-    x11: Option<X11>,
-}
-
-#[cfg(target_os = "linux")]
-struct X11 {
-    connection: x11rb::rust_connection::RustConnection,
-    window: u32,
-    opaque_region: u32,
-}
-
-impl Desktop {
-    #[cfg(target_os = "linux")]
-    fn attach(window: &quasar_window::winit::window::Window) -> Result<Self> {
-        let handle = window.window_handle()?;
-        let window_id = match handle.as_raw() {
-            RawWindowHandle::Xlib(handle) => u32::try_from(handle.window)?,
-            RawWindowHandle::Xcb(handle) => handle.window.into(),
-            _ => return Ok(Self { x11: None }),
-        };
-        let (connection, _) = x11rb::connect(None)?;
-        let atom =
-            |name: &[u8]| -> Result<u32> { Ok(connection.intern_atom(false, name)?.reply()?.atom) };
-        connection
-            .change_property8(
-                PropMode::REPLACE,
-                window_id,
-                AtomEnum::WM_CLASS,
-                AtomEnum::STRING,
-                b"missile-command\0MissileCommand\0",
-            )?
-            .check()?;
-        connection
-            .change_property32(
-                PropMode::REPLACE,
-                window_id,
-                atom(b"_NET_WM_PID")?,
-                AtomEnum::CARDINAL,
-                &[std::process::id()],
-            )?
-            .check()?;
-        connection
-            .change_property32(
-                PropMode::REPLACE,
-                window_id,
-                atom(b"_NET_WM_WINDOW_TYPE")?,
-                AtomEnum::ATOM,
-                &[atom(b"_NET_WM_WINDOW_TYPE_NORMAL")?],
-            )?
-            .check()?;
-        connection
-            .change_property32(
-                PropMode::REPLACE,
-                window_id,
-                atom(b"_NET_WM_WINDOW_OPACITY")?,
-                AtomEnum::CARDINAL,
-                &[u32::MAX],
-            )?
-            .check()?;
-        let opaque_region = atom(b"_NET_WM_OPAQUE_REGION")?;
-        connection.flush()?;
-        Ok(Self {
-            x11: Some(X11 {
-                connection,
-                window: window_id,
-                opaque_region,
-            }),
-        })
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    fn attach(_: &quasar_window::winit::window::Window) -> Result<Self> {
-        Ok(Self {})
-    }
-
-    fn resize(&self, width: u32, height: u32) -> Result {
-        #[cfg(target_os = "linux")]
-        if let Some(x11) = &self.x11 {
-            x11.connection
-                .change_property32(
-                    PropMode::REPLACE,
-                    x11.window,
-                    x11.opaque_region,
-                    AtomEnum::CARDINAL,
-                    &[0, 0, width, height],
-                )?
-                .check()?;
-            x11.connection.flush()?;
-        }
-        #[cfg(not(target_os = "linux"))]
-        let _ = (width, height);
-        Ok(())
     }
 }
 

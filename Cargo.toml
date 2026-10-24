@@ -14,26 +14,20 @@ desktop = [
     "dep:quasar-input",
     "dep:quasar-render-2d",
     "dep:quasar-window",
-    "dep:raw-window-handle",
-    "dep:x11rb",
     "quasar-render-2d/gpu",
     "quasar-render-2d/vulkan",
 ]
 
 [dependencies]
-quasar-core = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4" }
-quasar-storage = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4" }
+quasar-core = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.5" }
+quasar-storage = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.5" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-quasar-audio = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", optional = true }
-quasar-input = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", optional = true }
-quasar-render-2d = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", default-features = false, optional = true }
-quasar-window = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", optional = true }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-raw-window-handle = { version = "0.6.2", optional = true }
-x11rb = { version = "0.13.2", optional = true }
+quasar-audio = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.5", optional = true }
+quasar-input = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.5", optional = true }
+quasar-render-2d = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.5", default-features = false, optional = true }
+quasar-window = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.5", optional = true }
 
 [dev-dependencies]
 tempfile = "3.27"

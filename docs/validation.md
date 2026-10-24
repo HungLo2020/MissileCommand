@@ -8,8 +8,8 @@ Validation performed on 2026-10-23 after the Quasar desktop migration.
 | Rust tests | 37 passed: game rules, 40-wave configuration sweep, full-state deterministic replay, replay exhaustion, original-ROM movement samples, input-edge mapping and aim clamping, 4:3 viewport mapping, Quasar storage migration/atomic replacement, procedural audio and offline Quasar mixing, and RGBA8 presentation output. |
 | Headless build | `cargo test --locked --no-default-features` passes without winit, Vulkan, or audio dependencies. |
 | Python package tests | Six passed, including traversal/permissions/archive layout rejection. |
-| Quasar pin | `DevUtils/verify_engine.py` confirms six direct Quasar crates and all transitive engine crates resolve to `v0.2.4` at one Git commit. |
-| Native window | Quasar's winit/Vulkan path presented frames on a desktop with an RTX 2070. The X11 shim set `WM_CLASS=missile-command/MissileCommand`, `_NET_WM_PID`, `_NET_WM_WINDOW_TYPE_NORMAL`, full opacity, and a `1024×768` opaque region. |
+| Quasar pin | `DevUtils/verify_engine.py` confirms six direct Quasar crates and all transitive engine crates resolve to `v0.2.5` at one Git commit. |
+| Native window | Quasar's winit/Vulkan path presented frames on a desktop with an RTX 2070. Quasar 0.2.5 set `WM_CLASS=missile-command/MissileCommand`, `_NET_WM_PID`, `_NET_WM_WINDOW_TYPE_NORMAL`, full opacity, and a `1024×768` opaque region. |
 | Native window in CI | Configured for a private Xvfb server with Mesa lavapipe: application class, PID, opacity metadata, resizing, controls, pause, normal keyboard quit and saved records. |
 | Original game runtime | MAME 0.285 ran the supplied revision 1 ROM, started a player, fired two measured shots, and produced the recorded movement fixture. |
 | Packaged executable | The migrated package ran from a read-only `app/` tree with an unrelated working directory and wrote records/preferences under `BASALT_GAME_DIR`. The earlier pre-Quasar package also passed a relocated path containing spaces; the archive contract is unchanged. |
