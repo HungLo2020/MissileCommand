@@ -1,11 +1,13 @@
-//! Procedural arcade sound effects. Linux playback uses the host's libasound.
-//! This is an independent synthesizer, not a cycle-accurate POKEY implementation.
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-    mpsc::{self, SyncSender},
+//! Procedural arcade sound effects mixed by Quasar's device-optional audio stack.
+//! One sound is one Quasar procedural voice; Quasar owns voice limiting and mixing.
+//! The recipes remain an independent synthesizer, not a cycle-accurate POKEY model.
+use quasar_audio::{
+    AudioEngine, BusId, EngineConfig, PlaybackConfig, ProceduralSource, SoundSource, VoicePolicy,
 };
-use std::thread::JoinHandle;
+use std::{
+    error::Error,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Sound {
@@ -22,21 +24,13 @@ struct Voice {
     age: f32,
     duration: f32,
     phase: f32,
-}
-
-#[derive(Default)]
-pub struct Synth {
-    voices: Vec<Voice>,
     noise: u32,
     noise_phase: f32,
     noise_value: f32,
 }
 
-impl Synth {
-    pub fn trigger(&mut self, sound: Sound) {
-        if self.voices.len() == 24 {
-            self.voices.remove(0);
-        }
+impl Voice {
+    fn new(sound: Sound) -> Self {
         let duration = match sound {
             Sound::Launch => 0.14,
             Sound::Explosion => 0.48,
@@ -45,19 +39,22 @@ impl Synth {
             Sound::Empty => 0.055,
             Sound::GameOver => 1.4,
         };
-        self.voices.push(Voice {
+        Self {
             sound,
             age: 0.0,
             duration,
             phase: 0.0,
-        });
+            noise: 0,
+            noise_phase: 0.0,
+            noise_value: 0.0,
+        }
     }
 
-    pub fn clear(&mut self) {
-        self.voices.clear();
+    fn finished(&self) -> bool {
+        self.age >= self.duration
     }
 
-    pub fn sample(&mut self, sample_rate: f32) -> f32 {
+    fn sample(&mut self, sample_rate: f32) -> f32 {
         let dt = 1.0 / sample_rate;
         self.noise_phase += 5000.0 * dt;
         if self.noise_phase >= 1.0 {
@@ -69,122 +66,101 @@ impl Synth {
             self.noise = (self.noise >> 1) | (feedback << 16);
             self.noise_value = if self.noise & 1 == 0 { -1.0 } else { 1.0 };
         }
-        let mut mixed = 0.0;
-        for voice in &mut self.voices {
-            let fraction = voice.age / voice.duration;
-            let envelope = (1.0 - fraction).max(0.0).powi(2);
-            let (frequency, noise_mix, gain) = match voice.sound {
-                Sound::Launch => (1800.0 - 1500.0 * fraction, 0.15, 0.13),
-                Sound::Explosion => (90.0 - 60.0 * fraction, 0.85, 0.18),
-                Sound::CityLost => (65.0 - 45.0 * fraction, 0.9, 0.22),
-                Sound::Bonus => (800.0 + 500.0 * fraction, 0.0, 0.1),
-                Sound::Empty => (120.0, 0.0, 0.08),
-                Sound::GameOver => (160.0 - 120.0 * fraction, 0.5, 0.18),
-            };
-            voice.phase = (voice.phase + frequency * dt).fract();
-            let square = if voice.phase < 0.5 { -1.0 } else { 1.0 };
-            mixed += (square * (1.0 - noise_mix) + self.noise_value * noise_mix) * envelope * gain;
-            voice.age += dt;
-        }
-        self.voices.retain(|v| v.age < v.duration);
+        let fraction = self.age / self.duration;
+        let envelope = (1.0 - fraction).max(0.0).powi(2);
+        let (frequency, noise_mix, gain) = match self.sound {
+            Sound::Launch => (1800.0 - 1500.0 * fraction, 0.15, 0.13),
+            Sound::Explosion => (90.0 - 60.0 * fraction, 0.85, 0.18),
+            Sound::CityLost => (65.0 - 45.0 * fraction, 0.9, 0.22),
+            Sound::Bonus => (800.0 + 500.0 * fraction, 0.0, 0.1),
+            Sound::Empty => (120.0, 0.0, 0.08),
+            Sound::GameOver => (160.0 - 120.0 * fraction, 0.5, 0.18),
+        };
+        self.phase = (self.phase + frequency * dt).fract();
+        let square = if self.phase < 0.5 { -1.0 } else { 1.0 };
+        let mixed = (square * (1.0 - noise_mix) + self.noise_value * noise_mix) * envelope * gain;
+        self.age += dt;
         mixed.clamp(-0.85, 0.85)
     }
 }
 
+/// One Quasar procedural voice for a single sound effect.
+pub struct SfxSource {
+    voice: Voice,
+    sample_rate: u32,
+}
+
+impl SfxSource {
+    pub fn new(sound: Sound, sample_rate: u32) -> Self {
+        Self {
+            voice: Voice::new(sound),
+            sample_rate,
+        }
+    }
+}
+
+impl ProceduralSource for SfxSource {
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    fn channels(&self) -> u16 {
+        2
+    }
+
+    fn next_frame(&mut self, output: &mut [f32]) -> bool {
+        if self.voice.finished() {
+            return false;
+        }
+        output.fill(self.voice.sample(self.sample_rate as f32));
+        true
+    }
+}
+
+/// Host audio through Quasar's CPAL backend, with silent degradation on failure.
 pub struct Audio {
-    sender: SyncSender<Sound>,
-    muted: Arc<AtomicBool>,
-    running: Arc<AtomicBool>,
-    worker: Option<JoinHandle<()>>,
+    engine: AudioEngine,
+    sample_rate: u32,
+    muted: AtomicBool,
 }
 
 impl Audio {
-    #[cfg(target_os = "linux")]
-    pub fn open(device: &str, muted: bool) -> Result<Self, Box<dyn std::error::Error>> {
-        use alsa::{
-            Direction, ValueOr,
-            pcm::{Access, Format, HwParams, PCM},
-        };
-        let pcm = PCM::new(device, Direction::Playback, false)?;
-        let rate;
-        {
-            let params = HwParams::any(&pcm)?;
-            params.set_channels(2)?;
-            params.set_rate(48_000, ValueOr::Nearest)?;
-            params.set_access(Access::RWInterleaved)?;
-            params.set_format(Format::s16())?;
-            params.set_buffer_time_near(40_000, ValueOr::Nearest)?;
-            params.set_period_time_near(5_000, ValueOr::Nearest)?;
-            pcm.hw_params(&params)?;
-            rate = params.get_rate()?;
+    pub fn open(device: &str, muted: bool) -> Result<Self, Box<dyn Error>> {
+        let device_name = (device != "default").then_some(device);
+        let engine = AudioEngine::open(
+            device_name,
+            EngineConfig {
+                max_voices: 24,
+                ..EngineConfig::default()
+            },
+        )?;
+        let sample_rate = engine.diagnostics().sample_rate;
+        if sample_rate == 0 {
+            return Err("audio device reported an invalid sample rate".into());
         }
-        let (sender, receiver) = mpsc::sync_channel(64);
-        let muted = Arc::new(AtomicBool::new(muted));
-        let running = Arc::new(AtomicBool::new(true));
-        let mute_flag = muted.clone();
-        let run_flag = running.clone();
-        let worker = std::thread::Builder::new()
-            .name("alsa-playback".into())
-            .spawn(move || {
-                let Ok(output) = pcm.io_i16() else {
-                    return;
-                };
-                let mut synth = Synth::default();
-                let mut samples = [0_i16; 512];
-                while run_flag.load(Ordering::Relaxed) {
-                    for sound in receiver.try_iter().take(64) {
-                        synth.trigger(sound);
-                    }
-                    if mute_flag.load(Ordering::Relaxed) {
-                        synth.clear();
-                    }
-                    for frame in samples.chunks_exact_mut(2) {
-                        let sample = (synth.sample(rate as f32) * i16::MAX as f32) as i16;
-                        frame.fill(sample);
-                    }
-                    let mut offset = 0;
-                    while offset < samples.len() && run_flag.load(Ordering::Relaxed) {
-                        match output.writei(&samples[offset..]) {
-                            Ok(0) => {
-                                std::thread::sleep(std::time::Duration::from_millis(1));
-                            }
-                            Ok(frames) => offset += frames * 2,
-                            Err(error) => {
-                                if pcm.try_recover(error, true).is_err() {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-                let _ = pcm.drop();
-            })?;
+        engine.set_muted(muted)?;
         Ok(Self {
-            sender,
-            muted,
-            running,
-            worker: Some(worker),
+            engine,
+            sample_rate,
+            muted: AtomicBool::new(muted),
         })
     }
 
-    #[cfg(not(target_os = "linux"))]
-    pub fn open(_device: &str, _muted: bool) -> Result<Self, Box<dyn std::error::Error>> {
-        Err("ALSA playback is available on Linux".into())
-    }
-
     pub fn play(&self, sound: Sound) {
-        let _ = self.sender.try_send(sound);
+        let config = PlaybackConfig {
+            bus: BusId::MASTER,
+            policy: VoicePolicy::StealOldest,
+            ..PlaybackConfig::default()
+        };
+        let _ = self.engine.play(
+            SoundSource::Procedural(Box::new(SfxSource::new(sound, self.sample_rate))),
+            config,
+        );
     }
-    pub fn set_muted(&self, muted: bool) {
-        self.muted.store(muted, Ordering::Relaxed);
-    }
-}
 
-impl Drop for Audio {
-    fn drop(&mut self) {
-        self.running.store(false, Ordering::Relaxed);
-        if let Some(worker) = self.worker.take() {
-            let _ = worker.join();
+    pub fn set_muted(&self, muted: bool) {
+        if self.muted.load(Ordering::Relaxed) != muted && self.engine.set_muted(muted).is_ok() {
+            self.muted.store(muted, Ordering::Relaxed);
         }
     }
 }
@@ -192,17 +168,38 @@ impl Drop for Audio {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn sound_is_bounded_and_decays_to_silence() {
-        let mut synth = Synth::default();
-        synth.trigger(Sound::Explosion);
+        let mut source = SfxSource::new(Sound::Explosion, 48_000);
+        let mut frame = [0.0_f32; 2];
         let mut peak = 0.0_f32;
-        for _ in 0..48_000 {
-            let sample = synth.sample(48_000.0);
-            assert!(sample.is_finite() && sample.abs() <= 0.85);
-            peak = peak.max(sample.abs());
+        let mut frames = 0;
+        while source.next_frame(&mut frame) {
+            for sample in frame {
+                assert!(sample.is_finite() && sample.abs() <= 0.85);
+                peak = peak.max(sample.abs());
+            }
+            frames += 1;
         }
+        assert!(frames > 0);
         assert!(peak > 0.05);
-        assert_eq!(synth.sample(48_000.0), 0.0);
+        assert!(!source.next_frame(&mut frame));
+    }
+
+    #[test]
+    fn quasar_mixer_renders_procedural_effects() {
+        let mut mixer = quasar_audio::Mixer::new(quasar_audio::MixerConfig::default()).unwrap();
+        mixer
+            .play(
+                SoundSource::Procedural(Box::new(SfxSource::new(
+                    Sound::Explosion,
+                    mixer.sample_rate(),
+                ))),
+                PlaybackConfig::default(),
+            )
+            .unwrap();
+        let pcm = mixer.render(4_800).unwrap();
+        assert!(pcm.iter().any(|sample| sample.abs() > 0.01));
     }
 }

@@ -13,7 +13,9 @@ run() {
 run cargo fmt --all -- --check
 run cargo clippy --locked --all-targets -- -D warnings
 run cargo test --locked --all-targets
+run cargo test --locked --no-default-features
 run python3 -m unittest discover -s DevUtils -p 'test_*.py'
+run python3 DevUtils/verify_engine.py
 run cargo build --locked --release
 
 version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')

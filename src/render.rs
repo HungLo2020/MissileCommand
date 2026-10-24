@@ -29,6 +29,20 @@ impl Renderer {
         }
     }
 
+    /// Expand the palette framebuffer into the tightly packed RGBA8 form Quasar presents.
+    pub fn write_rgba(&self, output: &mut Vec<u8>) {
+        output.clear();
+        output.reserve(self.pixels.len() * 4);
+        for pixel in &self.pixels {
+            output.extend_from_slice(&[
+                (pixel >> 16) as u8,
+                (pixel >> 8) as u8,
+                *pixel as u8,
+                0xff,
+            ]);
+        }
+    }
+
     pub fn render(&mut self, game: &Game, aim: Vec2, high_score: u64) -> &[u32] {
         let palette = waves::palette(game.wave);
         // SOFTOK increments the palette byte every vblank. Bit 0 is unused,
@@ -134,7 +148,7 @@ impl Renderer {
                 self.centered(42, "MISSILE", palette.incoming, 2);
                 self.centered(62, "COMMAND", palette.incoming, 2);
                 self.centered(96, "DEFEND YOUR CITIES", palette.interceptor, 1);
-                if game.tick / 35 % 2 == 0 {
+                if (game.tick / 35).is_multiple_of(2) {
                     self.centered(122, "PRESS ENTER TO START", WHITE, 1);
                 }
                 self.centered(151, "MOUSE TO AIM", palette.incoming, 1);
@@ -440,5 +454,21 @@ fn glyph(letter: char) -> [u8; 8] {
         '(' => [0, 0x0c, 0x18, 0x30, 0x30, 0x30, 0x18, 0x0c],
         ')' => [0, 0x30, 0x18, 0x0c, 0x0c, 0x0c, 0x18, 0x30],
         _ => [0; 8],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rgba_expansion_is_opaque_and_preserves_rgb() {
+        let mut renderer = Renderer::new();
+        renderer.pixels[0] = 0x123456;
+        let mut rgba = Vec::new();
+        renderer.write_rgba(&mut rgba);
+        assert_eq!(rgba.len(), WIDTH * HEIGHT * 4);
+        assert_eq!(&rgba[..4], &[0x12, 0x34, 0x56, 0xff]);
+        assert!(rgba.chunks_exact(4).all(|pixel| pixel[3] == 0xff));
     }
 }

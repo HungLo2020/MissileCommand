@@ -439,11 +439,11 @@ impl Game {
     fn move_interceptors(&mut self) {
         let mut detonations = Vec::new();
         self.missiles.retain_mut(|m| {
-            if let MissileKind::Interceptor { base } = m.kind {
-                if m.step(if base == 1 { 7 } else { 3 }) {
-                    detonations.push(m.target);
-                    return false;
-                }
+            if let MissileKind::Interceptor { base } = m.kind
+                && m.step(if base == 1 { 7 } else { 3 })
+            {
+                detonations.push(m.target);
+                return false;
             }
             true
         });

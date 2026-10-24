@@ -19,16 +19,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install desktop build dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libasound2-dev libx11-dev xvfb xauth xdotool x11-utils
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config \
+            libxkbcommon-dev libxkbcommon-x11-0 libasound2-dev libwayland-dev \
+            libx11-dev libxrandr-dev libxi-dev libxcursor-dev libvulkan-dev
       - run: cargo fmt --all -- --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked --all-targets
+      - run: cargo test --locked --no-default-features
       - run: python -m unittest discover -s DevUtils -p 'test_*.py'
+      - run: python DevUtils/verify_engine.py
       - run: cargo build --locked --release
-      - run: python3 DevUtils/window_smoke.py --binary target/release/missile-command
       - name: Package tagged version
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -42,10 +45,40 @@ jobs:
           name: missile-command-linux-x64
           path: dist/MissileCommand-*-linux-x64.zip
           if-no-files-found: error
+      - name: Upload desktop binary for native smoke
+        uses: actions/upload-artifact@v4
+        with:
+          name: missile-command-binary
+          path: target/release/missile-command
+          if-no-files-found: error
+
+  window-smoke:
+    needs: linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install private display and software Vulkan
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth xdotool x11-utils mesa-vulkan-drivers \
+            libvulkan1 libxkbcommon-x11-0 libx11-6 libxrandr2 libxi6 libxcursor1 \
+            libwayland-client0
+          sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
+      - uses: actions/download-artifact@v4
+        with:
+          name: missile-command-binary
+          path: bin
+      - name: Exercise the native window on a private Xvfb server
+        run: |
+          chmod +x bin/missile-command
+          python3 DevUtils/window_smoke.py --binary bin/missile-command
 
   publish:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: linux
+    needs: [linux, window-smoke]
     runs-on: ubuntu-22.04
     permissions:
       contents: write

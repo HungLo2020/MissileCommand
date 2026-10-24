@@ -2,22 +2,44 @@
 name = "missile-command"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.94"
 description = "A native Rust reconstruction of Atari's arcade Missile Command"
 license = "MIT"
 repository = "https://github.com/HungLo2020/MissileCommand"
 
-[dependencies]
-minifb = { version = "0.28.0", default-features = false, features = ["x11"] }
-serde_json = "1.0"
-tempfile = "3.27"
-[target.'cfg(target_os = "linux")'.dependencies]
-alsa = "0.9.1"
-x11rb = "0.13.2"
+[features]
+default = ["desktop"]
+desktop = [
+    "dep:quasar-audio",
+    "dep:quasar-input",
+    "dep:quasar-render-2d",
+    "dep:quasar-window",
+    "dep:raw-window-handle",
+    "dep:x11rb",
+    "quasar-render-2d/gpu",
+    "quasar-render-2d/vulkan",
+]
 
-[dependencies.serde]
-version = "1.0"
-features = ["derive"]
+[dependencies]
+quasar-core = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4" }
+quasar-storage = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+quasar-audio = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", optional = true }
+quasar-input = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", optional = true }
+quasar-render-2d = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", default-features = false, optional = true }
+quasar-window = { git = "https://github.com/HungLo2020/Quasar", tag = "v0.2.4", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+raw-window-handle = { version = "0.6.2", optional = true }
+x11rb = { version = "0.13.2", optional = true }
+
+[dev-dependencies]
+tempfile = "3.27"
+
+[profile.dev.package.shaderc-sys]
+opt-level = 3
 
 [profile.release]
 lto = "thin"

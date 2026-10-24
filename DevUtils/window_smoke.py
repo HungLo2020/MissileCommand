@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Test the actual window ONLY inside an owned, private Xvfb server.
 
-Never connects to the caller's desktop. Requires Xvfb, xdotool, and xprop.
-All X clients receive an explicit private DISPLAY and XAUTHORITY. Input events
-are additionally addressed to the game window after checking its process ID.
+Never connects to the caller's desktop. Requires Xvfb, xdotool, xprop, and a
+Vulkan 1.3 driver (Mesa lavapipe is sufficient). All X clients receive an
+explicit private DISPLAY and XAUTHORITY. Input events are additionally
+addressed to the game window after checking its process ID.
 """
 import argparse
 import json
