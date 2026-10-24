@@ -33,8 +33,8 @@ cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
 # Optional native-window checks always create their own private Xvfb display:
-python3 tools/window_smoke.py
-python3 -m unittest discover -s tools -p 'test_*.py'
+python3 DevUtils/window_smoke.py
+python3 -m unittest discover -s DevUtils -p 'test_*.py'
 ```
 
 The simulation has no platform or I/O dependencies. A fixed 61.03515625 Hz step follows the arcade video timing. Missile motion uses 8.8 fixed point, and a seeded generator makes replays reproducible within the same implementation version.
@@ -51,8 +51,8 @@ cmp /tmp/flight.ppm /tmp/replay.ppm
 
 ```sh
 cargo build --release --locked
-python3 tools/package.py
-python3 tools/validate_package.py dist/MissileCommand-0.1.0-linux-x64.zip
+python3 DevUtils/package.py
+python3 DevUtils/validate_package.py dist/MissileCommand-0.1.0-linux-x64.zip
 ```
 
 Archives contain only `app/`, with the executable at `app/bin/missile-command` and a 3:4 launcher cover at `app/basalt/cover.png`. A `v<version>` tag runs the release workflow. See [Basalt integration](docs/basalt.md) and the [proposed catalog entry](packaging/MissileCommand.json). No Basalt repository changes are necessary to build or run this game.
@@ -66,6 +66,10 @@ High scores live in `data/save/records.json`; mute preferences live in `data/con
 - `src/audio.rs`: procedural effects and host ALSA worker.
 - `src/storage.rs`: versioned persistence and install paths.
 - `src/main.rs`, `src/desktop.rs`, `src/input.rs`: window identity, input edges, fixed-step loop, recording/replay.
-- `tools/reference.py`: inspect a locally supplied ROM and reproduce static evidence.
+- `DevUtils/`: development tools for ROM evidence extraction, packaging/validation, artwork, and native-window checks.
 
 The project includes no ROM. Original Rust code and cover art are MIT licensed; historical Atari program and audiovisual material remain their owners' property.
+
+## AGENTS
+
+This project follows the [HungLo2020 coding standards](https://github.com/HungLo2020/LinuxScripts/blob/master/CODING-STANDARDS.md).

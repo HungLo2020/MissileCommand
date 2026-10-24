@@ -1,7 +1,7 @@
 {
   "reference": "missile1 revision 1 under MAME 0.285",
   "rom_sha256": "4cfa3b0ea969bc721788a0e00f5c22466cfa02458de26599303de06100e4602c",
-  "probe": "tools/mame_probe.lua",
+  "probe": "DevUtils/mame_probe.lua",
   "instrumentation": "Coin and start input; cursor RAM set to (20,130) for side shot then (123,130) for center shot; no missile position/speed writes. Coordinates native bottom-up.",
   "side": [
     {

@@ -8,8 +8,8 @@ Build and package on Linux x64 using Rust and Python 3.11 or newer:
 
 ```sh
 cargo build --locked --release
-python3 tools/package.py
-python3 tools/validate_package.py dist/MissileCommand-0.1.0-linux-x64.zip
+python3 DevUtils/package.py
+python3 DevUtils/validate_package.py dist/MissileCommand-0.1.0-linux-x64.zip
 ```
 
 The archive name uses `package.version` from `Cargo.toml`. Its only root entry is `app/`:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild the original procedural launcher cover; needs Pillow, no game ROM.
 
-Run from any directory: python3 tools/artwork.py
+Run from any directory: python3 DevUtils/artwork.py
 The bundled PNG is the release asset. Pillow/fonts are build-time tools only.
 """
 from pathlib import Path
