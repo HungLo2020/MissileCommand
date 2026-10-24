@@ -177,7 +177,12 @@ impl App {
                 resizable: true,
             },
         )?;
+        // Set compositor-visible identity before Vulkan initialization delays the first frame.
+        let desktop = Desktop::attach(window.native())?;
         let size = window.native().inner_size();
+        if size.width > 0 && size.height > 0 {
+            desktop.resize(size.width, size.height)?;
+        }
         let presenter = FramebufferPresenter::new(
             window.shared_native(),
             (size.width.max(1), size.height.max(1)),
@@ -188,10 +193,6 @@ impl App {
                 scaling: Scaling::Fit,
             },
         )?;
-        let desktop = Desktop::attach(window.native())?;
-        if size.width > 0 && size.height > 0 {
-            desktop.resize(size.width, size.height)?;
-        }
         window
             .native()
             .set_title("Missile Command — Enter to start · F1 help");

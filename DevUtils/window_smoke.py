@@ -30,7 +30,8 @@ def exercise(args, environment, root):
     installed.parent.parent.chmod(0o555)
     environment = dict(environment)
     environment.pop("BASALT_GAME_DIR", None)
-    process = subprocess.Popen([str(installed), "--no-audio"], env=environment, cwd="/",
+    process = subprocess.Popen([str(installed), "--no-audio", "--autoplay"],
+                               env=environment, cwd="/",
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:
         window = None
@@ -49,14 +50,36 @@ def exercise(args, environment, root):
         def prop(*names):
             return subprocess.check_output([args.xprop, "-id", window, *names],
                                            env=environment, text=True, timeout=5)
-        props = prop("WM_CLASS", "_NET_WM_PID", "_NET_WM_WINDOW_OPACITY", "_NET_WM_WINDOW_TYPE")
-        if f"_NET_WM_PID(CARDINAL) = {process.pid}" not in props:
-            raise RuntimeError("window does not belong to the spawned game process")
-        if '"missile-command", "MissileCommand"' not in props:
-            raise RuntimeError(f"missing application class: {props}")
-        if "4294967295" not in props or "_NET_WM_WINDOW_TYPE_NORMAL" not in props:
-            raise RuntimeError(f"missing opaque normal window metadata: {props}")
+        deadline = time.monotonic() + 5
+        while True:
+            props = prop("WM_CLASS", "_NET_WM_PID", "_NET_WM_WINDOW_OPACITY",
+                         "_NET_WM_WINDOW_TYPE")
+            valid = (
+                f"_NET_WM_PID(CARDINAL) = {process.pid}" in props
+                and '"missile-command", "MissileCommand"' in props
+                and "4294967295" in props
+                and "_NET_WM_WINDOW_TYPE_NORMAL" in props
+            )
+            if valid:
+                break
+            if process.poll() is not None:
+                raise RuntimeError(
+                    f"game exited before window metadata: {process.communicate()}"
+                )
+            if time.monotonic() > deadline:
+                raise RuntimeError(f"missing window metadata: {props}")
+            time.sleep(0.05)
         xdo("windowfocus", "--sync", window)
+        window_id = int(window, 0)
+        for _ in range(40):
+            focused = xdo("getwindowfocus", check=False)
+            try:
+                if focused.returncode == 0 and int(focused.stdout.strip(), 0) == window_id:
+                    break
+            except ValueError:
+                pass
+            time.sleep(0.05)
+        time.sleep(0.1)
         def key(name):
             xdo("keydown", "--window", window, name)
             time.sleep(0.08)
@@ -66,10 +89,15 @@ def exercise(args, environment, root):
         key("Return")
         for width, height in [(800, 600), (1100, 650), (440, 700)]:
             xdo("windowsize", "--sync", window, width, height)
-            time.sleep(0.12)
-            opaque = prop("_NET_WM_OPAQUE_REGION")
-            if [int(n) for n in re.findall(r"\d+", opaque)] != [0, 0, width, height]:
-                raise RuntimeError(f"opaque region did not follow resize: {opaque}")
+            deadline = time.monotonic() + 2
+            while True:
+                opaque = prop("_NET_WM_OPAQUE_REGION")
+                region = [int(n) for n in re.findall(r"\d+", opaque)]
+                if region == [0, 0, width, height]:
+                    break
+                if time.monotonic() > deadline:
+                    raise RuntimeError(f"opaque region did not follow resize: {opaque}")
+                time.sleep(0.05)
         key("F1")
         if "Controls" not in xdo("getwindowname", window).stdout:
             raise RuntimeError("F1 did not open the controls overlay")
