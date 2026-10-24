@@ -107,6 +107,7 @@ pub fn run(options: Options, session: Session) -> Result {
         previous: Instant::now(),
         started: Instant::now(),
         frames: 0,
+        window_size: (0, 0),
         title: String::new(),
         error: None,
     };
@@ -150,6 +151,7 @@ struct App {
     previous: Instant,
     started: Instant,
     frames: u64,
+    window_size: (u32, u32),
     title: String,
     last_score_saved: u64,
     error: Option<String>,
@@ -163,6 +165,20 @@ impl App {
     fn fail(&mut self, event_loop: &ActiveEventLoop, error: impl std::fmt::Display) {
         self.error = Some(error.to_string());
         event_loop.exit();
+    }
+
+    fn apply_size(&mut self, width: u32, height: u32) -> Result {
+        if width == 0 || height == 0 || (width, height) == self.window_size {
+            return Ok(());
+        }
+        self.window_size = (width, height);
+        if let Some(presenter) = &mut self.presenter {
+            presenter.resize(width, height);
+        }
+        if let Some(desktop) = &self.desktop {
+            desktop.resize(width, height)?;
+        }
+        Ok(())
     }
 
     fn initialize(&mut self, event_loop: &ActiveEventLoop) -> Result {
@@ -183,6 +199,7 @@ impl App {
         if size.width > 0 && size.height > 0 {
             desktop.resize(size.width, size.height)?;
         }
+        self.window_size = (size.width, size.height);
         let presenter = FramebufferPresenter::new(
             window.shared_native(),
             (size.width.max(1), size.height.max(1)),
@@ -385,18 +402,11 @@ impl ApplicationHandler for App {
             event_loop.exit();
             return;
         }
-        if let Some(size) = update.resized {
-            if let Some(presenter) = &mut self.presenter {
-                presenter.resize(size.width, size.height);
-            }
-            if size.width > 0
-                && size.height > 0
-                && let Some(desktop) = &self.desktop
-                && let Err(error) = desktop.resize(size.width, size.height)
-            {
-                self.fail(event_loop, error);
-                return;
-            }
+        if let Some(size) = update.resized
+            && let Err(error) = self.apply_size(size.width, size.height)
+        {
+            self.fail(event_loop, error);
+            return;
         }
         if let Some(focused) = update.focus_changed {
             self.clock.reset();
@@ -431,6 +441,16 @@ impl ApplicationHandler for App {
             return;
         }
         let automated = self.automated();
+        let current_size = self.window.as_ref().map(|window| {
+            let size = window.native().inner_size();
+            (size.width, size.height)
+        });
+        if let Some((width, height)) = current_size
+            && let Err(error) = self.apply_size(width, height)
+        {
+            self.fail(event_loop, error);
+            return;
+        }
         let now = Instant::now();
         self.process_input(event_loop, now);
         let focused = self.window.as_ref().is_some_and(|window| window.focused());

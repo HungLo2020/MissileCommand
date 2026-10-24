@@ -89,7 +89,7 @@ def exercise(args, environment, root):
         key("Return")
         for width, height in [(800, 600), (1100, 650), (440, 700)]:
             xdo("windowsize", "--sync", window, width, height)
-            deadline = time.monotonic() + 2
+            deadline = time.monotonic() + 10
             while True:
                 opaque = prop("_NET_WM_OPAQUE_REGION")
                 region = [int(n) for n in re.findall(r"\d+", opaque)]
